@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码文件发送器 - 修复版</title>
+    <script src="js/pako.min.js"></script>
+    <script src="js/qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            max-width: 1000px; 
+            margin: 20px auto; 
+            padding: 20px;
+            background: #f5f7fa;
+            color: #333;
+        }
+        .container { 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            padding: 30px; 
+        }
+        h1 { 
+            color: #2c3e50; 
+            margin-bottom: 10px; 
+            border-bottom: 3px solid #3498db; 
+            padding-bottom: 10px;
+        }
+        .subtitle { 
+            color: #7f8c8d; 
+            margin-bottom: 30px; 
+            font-size: 16px;
+        }
+        .file-section { 
+            margin-bottom: 30px; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-radius: 8px;
+        }
+        #fileInput { 
+            display: block; 
+            width: 100%; 
+            padding: 12px; 
+            margin: 15px 0; 
+            border: 2px dashed #3498db; 
+            border-radius: 8px; 
+            cursor: pointer;
+            background: #e8f4fc;
+        }
+        .file-info { 
+            margin-top: 15px; 
+            padding: 12px; 
+            background: #e8f4fc; 
+            border-left: 4px solid #3498db; 
+            border-radius: 4px;
+        }
+        .chunk-size-section, .qr-size-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        .slider-value {
+            min-width: 80px;
+            font-weight: bold;
+            color: #3498db;
+            font-size: 18px;
+            text-align: center;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #3498db;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #e0e0e0;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2980b9;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+        .size-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #856404;
+            font-size: 14px;
+        }
+        .control-section { 
+            margin: 25px 0; 
+            text-align: center; 
+        }
+        button { 
+            padding: 14px 36px; 
+            margin: 0 10px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        #startBtn { 
+            background: linear-gradient(135deg, #3498db, #2980b9); 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        #startBtn:hover { 
+            background: linear-gradient(135deg, #2980b9, #1c5d87); 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+        }
+        #startBtn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #resetBtn { 
+            background: #e0e0e0; 
+            color: #555; 
+        }
+        #resetBtn:hover { 
+            background: #d0d0d0; 
+        }
+        .qrcode-section { 
+            margin-top: 30px; 
+            text-align: center; 
+        }
+        #qrcodeContainer { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 20px; 
+            margin: 25px 0; 
+            min-height: 400px;
+            align-items: flex-start;
+        }
+        .qrcode-item { 
+            padding: 15px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1); 
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .qrcode-item:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+        }
+        .qrcode-item img { 
+            display: block; 
+            margin: 0 auto 10px; 
+        }
+        .progress-info { 
+            margin: 20px 0; 
+            font-size: 18px; 
+            color: #2c3e50; 
+            font-weight: 600;
+        }
+        .current-qr { 
+            background: #e8f7f0 !important; 
+            border: 2px solid #2ecc71 !important; 
+        }
+        .file-name-qr {
+            background: #fff3e0 !important;
+            border: 2px solid #ff9800 !important;
+        }
+        .status { 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+            font-weight: 500;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        .status.info { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border: 1px solid #bee5eb; 
+        }
+        .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            color: #7f8c8d; 
+            font-size: 14px; 
+            border-top: 1px solid #eee; 
+            padding-top: 20px;
+        }
+        .fingerprint-info {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #e8f4fc;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .debug-info {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #6c757d;
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 20px; }
+            #qrcodeContainer { gap: 15px; }
+            button { 
+                padding: 12px 24px; 
+                margin: 5px; 
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 离线文件二维码发送器 - 修复版</h1>
+        <p class="subtitle">选择文件后，系统会自动压缩、分片并生成二维码序列。<strong style="color:#e74c3c;">文件名在最后一个二维码中</strong>。</p>
+        
+        <div class="file-section">
+            <h3>1. 选择要发送的文件</h3>
+            <input type="file" id="fileInput">
+            <div id="fileInfo" class="file-info" style="display:none;">
+                <strong>已选择文件:</strong> <span id="fileName"></span><br>
+                <strong>文件大小:</strong> <span id="fileSize"></span><br>
+                <strong>文件类型:</strong> <span id="fileType"></span><br>
+                <div id="fingerprintInfo" class="fingerprint-info" style="display:none;">
+                    <strong>文件指纹:</strong> <span id="fileFingerprint"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chunk-size-section">
+            <h3>2. 设置分片大小</h3>
+            <p style="color: #666; margin-bottom: 10px;"><strong>⚠️ 重要：建议使用600字节以下的分片大小以确保稳定性</strong></p>
+            
+            <div class="slider-container">
+                <span style="font-weight: 600;">分片大小:</span>
+                <input type="range" id="chunkSizeSlider" min="500" max="2000" value="900" step="50">
+                <div id="chunkSizeValue" class="slider-value">900 字节</div>
+            </div>
+            
+            <div class="size-info">
+                <span>小分片 (500B)</span>
+                <span>推荐 (900B)</span>
+                <span>大分片 (2000B)</span>
+            </div>
+            
+            <div class="warning-box">
+                ⚠️ 安全限制：每个分片的JSON数据必须小于1800字符。超过此限制会导致二维码生成失败。
+            </div>
+            
+            <div id="estimatedInfo" style="margin-top: 15px; color: #3498db; font-weight: 500;">
+                预估二维码数量: <span id="estimatedChunks">--</span> 个 (数据二维码+1个文件名二维码)
+            </div>
+        </div>
+        
+        <div class="qr-size-section">
+            <h3>3. 设置二维码尺寸</h3>
+            <p style="color: #666; margin-bottom: 10px;">调整显示尺寸（200-800像素）。注意：调整尺寸不会重新生成二维码，仅改变显示大小。</p>
+            
+            <div class="slider-container">
+                <span style="font-weight: 600;">显示尺寸:</span>
+                <input type="range" id="qrSizeSlider" min="200" max="800" value="500" step="50">
+                <div id="qrSizeValue" class="slider-value">500 像素</div>
+            </div>
+            
+            <div class="size-info">
+                <span>小尺寸 (200px)</span>
+                <span>大尺寸 (800px)</span>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h3>4. 生成二维码</h3>
+            <button id="startBtn">🚀 开始生成二维码序列</button>
+            <button id="resetBtn">🔄 重置</button>
+        </div>
+        
+        <div id="status" class="status info">请选择一个文件</div>
+        
+        <div class="qrcode-section">
+            <h3>5. 扫描二维码 (按顺序)</h3>
+            <div class="progress-info" id="progressInfo"></div>
+            <div id="qrcodeContainer">
+                <p style="color: #7f8c8d; padding: 50px 0;">二维码将在此处显示...</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>💡 提示: 确保电脑屏幕亮度足够，手机摄像头对焦清晰。按顺序扫描所有二维码。</p>
+            <p><strong style="color:#e74c3c;">新方案：文件名在最后一个单独的二维码中，避免中文文件名导致的二维码容量问题</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置和常量 ====================
+        const CONFIG = {
+            CHUNK_SIZE: 900,
+            QR_DISPLAY_SIZE: 500,
+            QR_GENERATE_SIZE: 500,
+            MAX_JSON_SIZE: 1800,
+            QR_MAX_CAPACITY: 2953,
+            PACKET_TYPES: {
+                DATA: 'data',
+                FILENAME: 'fn'
+            }
+        };
+
+        // ==================== 状态变量 ====================
+        let file = null;
+        let chunks = [];
+        let currentChunkIndex = 0;
+        let fileFingerprint = '';
+        let originalFileName = '';
+        let originalFileSize = 0;
+        let qrCodeDataUrls = [];
+        let fileNameQrCode = null;
+
+        // ==================== 工具函数 ====================
+        
+        /**
+         * 生成5字符文件指纹
+         */
+        function generateShortFileId() {
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 46656);
+            const combined = (timestamp % 60466176) * 1000 + random;
+            return combined.toString(36).padStart(5, '0').slice(-5);
+        }
+
+        /**
+         * 计算CRC32校验码（使用pako库，与接收端一致）
+         */
+        function calculateCRC32(data) {
+            // 使用pako的crc32函数确保一致性
+            if (typeof pako !== 'undefined' && pako.crc32) {
+                return pako.crc32(data).toString(36).padStart(5, '0').slice(-5);
+            }
+            
+            // 备用方案：确保与接收端一致的实现
+            return calculateCRC32Fallback(data);
+        }
+
+        /**
+         * CRC32备用实现（确保与接收端一致）
+         */
+        function calculateCRC32Fallback(data) {
+            const table = new Uint32Array(256);
+            for (let i = 0; i < 256; i++) {
+                let c = i;
+                for (let j = 0; j < 8; j++) {
+                    c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+                }
+                table[i] = c;
+            }
+            
+            let crc = 0xFFFFFFFF;
+            const len = data.length;
+            
+            for (let i = 0; i < len; i++) {
+                crc = (crc >>> 8) ^ table[(crc ^ data.charCodeAt(i)) & 0xFF];
+            }
+            crc = (crc ^ 0xFFFFFFFF) >>> 0;
+            return crc.toString(36).padStart(5, '0').slice(-5);
+        }
+
+        /**
+         * 正确编码文件名为Base64
+         */
+        function encodeFileName(filename) {
+            try {
+                // 使用TextEncoder处理UTF-8
+                const encoder = new TextEncoder();
+                const encoded = encoder.encode(filename);
+                return btoa(String.fromCharCode(...encoded));
+            } catch (e) {
+                console.error('文件名编码失败:', e);
+                // 回退方案
+                return btoa(unescape(encodeURIComponent(filename)));
+            }
+        }
+
+        /**
+         * Uint8Array转Base64（统一使用）
+         */
+        function uint8ArrayToBase64(uint8Array) {
+            const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            let result = '';
+            const len = uint8Array.length;
+            
+            for (let i = 0; i < len; i += 3) {
+                const byte1 = uint8Array[i];
+                const byte2 = i + 1 < len ? uint8Array[i + 1] : 0;
+                const byte3 = i + 2 < len ? uint8Array[i + 2] : 0;
+                
+                const triplet = (byte1 << 16) | (byte2 << 8) | byte3;
+                
+                result += base64Chars.charAt((triplet >> 18) & 63);
+                result += base64Chars.charAt((triplet >> 12) & 63);
+                result += (i + 1 < len) ? base64Chars.charAt((triplet >> 6) & 63) : '=';
+                result += (i + 2 < len) ? base64Chars.charAt(triplet & 63) : '=';
+            }
+            
+            return result;
+        }
+
+        /**
+         * 格式化文件大小
+         */
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        /**
+         * 读取文件为ArrayBuffer
+         */
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        /**
+         * 显示错误信息
+         */
+        function showError(message, error = null) {
+            status.textContent = `❌ ${message}`;
+            status.className = 'status error';
+            
+            if (error) {
+                console.error(message, error);
+            }
+        }
+
+        /**
+         * 显示成功信息
+         */
+        function showSuccess(message) {
+            status.textContent = `✅ ${message}`;
+            status.className = 'status success';
+        }
+
+        /**
+         * 显示信息
+         */
+        function showInfo(message) {
+            status.textContent = `ℹ️ ${message}`;
+            status.className = 'status info';
+        }
+
+        // ==================== DOM元素缓存 ====================
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const fileType = document.getElementById('fileType');
+        const fingerprintInfo = document.getElementById('fingerprintInfo');
+        const fileFingerprintSpan = document.getElementById('fileFingerprint');
+        const chunkSizeSlider = document.getElementById('chunkSizeSlider');
+        const chunkSizeValue = document.getElementById('chunkSizeValue');
+        const estimatedChunks = document.getElementById('estimatedChunks');
+        const qrSizeSlider = document.getElementById('qrSizeSlider');
+        const qrSizeValue = document.getElementById('qrSizeValue');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const qrcodeContainer = document.getElementById('qrcodeContainer');
+        const progressInfo = document.getElementById('progressInfo');
+        const status = document.getElementById('status');
+
+        // ==================== 事件处理 ====================
+        
+        // 初始化滑块显示
+        chunkSizeValue.textContent = CONFIG.CHUNK_SIZE + ' 字节';
+        qrSizeValue.textContent = CONFIG.QR_DISPLAY_SIZE + ' 像素';
+
+        // 滑块事件处理
+        chunkSizeSlider.addEventListener('input', function() {
+            CONFIG.CHUNK_SIZE = parseInt(this.value);
+            chunkSizeValue.textContent = CONFIG.CHUNK_SIZE + ' 字节';
+            if (file) updateChunkEstimation();
+        });
+
+        // 二维码尺寸滑块
+        qrSizeSlider.addEventListener('input', function() {
+            CONFIG.QR_DISPLAY_SIZE = parseInt(this.value);
+            qrSizeValue.textContent = CONFIG.QR_DISPLAY_SIZE + ' 像素';
+            
+            const qrImages = document.querySelectorAll('.qrcode-item img');
+            qrImages.forEach(img => {
+                img.style.width = CONFIG.QR_DISPLAY_SIZE + 'px';
+                img.style.height = CONFIG.QR_DISPLAY_SIZE + 'px';
+            });
+            
+            const qrItems = document.querySelectorAll('.qrcode-item');
+            qrItems.forEach(item => {
+                item.style.maxWidth = (CONFIG.QR_DISPLAY_SIZE + 40) + 'px';
+            });
+        });
+
+        // 文件选择处理
+        fileInput.addEventListener('change', function(e) {
+            file = e.target.files[0];
+            if (file) {
+                originalFileName = file.name;
+                originalFileSize = file.size;
+                fileName.textContent = originalFileName;
+                fileSize.textContent = formatFileSize(originalFileSize);
+                fileType.textContent = file.type || '未知类型';
+                
+                fileFingerprint = generateShortFileId();
+                fileFingerprintSpan.textContent = fileFingerprint;
+                fingerprintInfo.style.display = 'block';
+                fileInfo.style.display = 'block';
+                
+                updateChunkEstimation();
+                
+                showSuccess(`已选择文件: ${file.name} (${formatFileSize(file.size)})`);
+                
+                console.log('文件已选择:', file.name, '大小:', file.size, '指纹:', fileFingerprint);
+            } else {
+                fileInfo.style.display = 'none';
+                showInfo('请选择一个文件');
+            }
+        });
+
+        // 更新二维码数量预估
+        function updateChunkEstimation() {
+            if (!file) return;
+            const estimatedCompressedSize = file.size * 0.5;
+            const estimated = Math.ceil(estimatedCompressedSize / CONFIG.CHUNK_SIZE);
+            estimatedChunks.textContent = estimated + ' + 1';
+            
+            if (estimated > 50) {
+                showInfo(`文件较大，预计生成 ${estimated} 个数据二维码 + 1个文件名二维码。建议减小分片大小以提高扫描成功率。`);
+            }
+        }
+
+        // 开始处理文件
+        startBtn.addEventListener('click', async function() {
+            console.log('开始处理文件按钮被点击');
+            
+            if (!file) {
+                showError('请先选择一个文件');
+                return;
+            }
+            
+            // 检查必要依赖
+            if (typeof QRCode === 'undefined') {
+                showError('QRCode库未加载，请检查js/qrcode.min.js文件');
+                return;
+            }
+            
+            if (typeof pako === 'undefined') {
+                showError('压缩库未加载，请检查js/pako.min.js文件');
+                return;
+            }
+            
+            try {
+                startBtn.disabled = true;
+                startBtn.textContent = '处理中...';
+                showInfo('正在读取并压缩文件...');
+                
+                console.log('=== 开始处理文件 ===');
+                console.log(`文件名: ${originalFileName}`);
+                console.log(`文件大小: ${originalFileSize} 字节`);
+                console.log(`分片大小: ${CONFIG.CHUNK_SIZE} 字节`);
+                console.log(`文件指纹: ${fileFingerprint}`);
+                
+                // 1. 读取文件
+                const fileBuffer = await readFileAsArrayBuffer(file);
+                
+                // 2. 使用zlib压缩
+                console.log('正在压缩文件...');
+                const compressed = pako.deflate(new Uint8Array(fileBuffer));
+                console.log(`压缩前: ${fileBuffer.byteLength} bytes, 压缩后: ${compressed.length} bytes`);
+                
+                // 3. 分片处理
+                await processFileChunks(compressed);
+                
+            } catch (error) {
+                console.error('处理文件时出错:', error);
+                showError(`处理文件时出错: ${error.message}`, error);
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 开始生成二维码序列';
+            }
+        });
+
+        /**
+         * 处理文件分片
+         */
+        async function processFileChunks(compressed) {
+            chunks = [];
+            qrCodeDataUrls = [];
+            fileNameQrCode = null;
+            
+            console.log('压缩数据验证:');
+            console.log('- 原始文件大小:', file.size, '字节');
+            console.log('- 压缩后大小:', compressed.length, '字节');
+            console.log('- 压缩率:', ((compressed.length / file.size) * 100).toFixed(1) + '%');
+
+            const totalChunks = Math.ceil(compressed.length / CONFIG.CHUNK_SIZE);
+            console.log(`分片设置: ${compressed.length} 字节 / ${CONFIG.CHUNK_SIZE} 字节 = ${totalChunks} 个分片`);
+
+            if (totalChunks <= 0) {
+                throw new Error('分片计算错误：总分片数为0');
+            }
+
+            showInfo(`正在分片... (共 ${totalChunks} 个数据分片)`);
+
+            // 将压缩数据转换为Uint8Array
+            const compressedArray = new Uint8Array(compressed);
+            
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CONFIG.CHUNK_SIZE;
+                const end = Math.min(start + CONFIG.CHUNK_SIZE, compressed.length);
+                
+                const chunkData = compressedArray.slice(start, end);
+                console.log(`分片 ${i}: 位置 ${start}-${end}, 大小 ${chunkData.length} 字节`);
+                
+                // 转换为Base64
+                const base64Data = uint8ArrayToBase64(chunkData);
+                console.log(`Base64大小: ${base64Data.length} 字符`);
+                
+                // 计算CRC32校验（使用pako库确保一致性）
+                const crc32Hash = calculateCRC32(base64Data);
+                
+                // 创建分片对象
+                const chunkObj = {
+                    i: i,                    // 分片索引
+                    t: totalChunks,          // 总分片数
+                    h: crc32Hash,            // CRC32校验码
+                    f: fileFingerprint,      // 文件指纹
+                    d: base64Data            // 数据
+                };
+                
+                // 检查JSON大小
+                const jsonStr = JSON.stringify(chunkObj);
+                const jsonSize = jsonStr.length;
+                console.log(`分片 ${i} JSON大小: ${jsonSize} 字符`);
+                
+                // 二维码容量限制检查
+                if (jsonSize > CONFIG.QR_MAX_CAPACITY) {
+                    console.error(`❌ JSON过大: ${jsonSize} > ${CONFIG.QR_MAX_CAPACITY}`);
+                    
+                    const excessRatio = jsonSize / CONFIG.QR_MAX_CAPACITY;
+                    const newChunkSize = Math.floor(CONFIG.CHUNK_SIZE / excessRatio * 0.8);
+                    
+                    showError(`分片 ${i+1} 数据过大 (${jsonSize} 字符)。请将分片大小减小到 ${Math.max(200, newChunkSize)} 字节以下。`);
+                    
+                    chunkSizeSlider.value = Math.max(200, newChunkSize);
+                    chunkSizeValue.textContent = Math.max(200, newChunkSize) + ' 字节';
+                    CONFIG.CHUNK_SIZE = Math.max(200, newChunkSize);
+                    
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🚀 重新生成二维码';
+                    return;
+                }
+                
+                chunks.push(chunkObj);
+                
+                // 显示进度
+                if (i % Math.max(1, Math.floor(totalChunks / 10)) === 0) {
+                    showInfo(`分片进度: ${i+1}/${totalChunks}`);
+                }
+            }
+            
+            console.log(`✅ 数据分片完成，共 ${totalChunks} 个分片`);
+            
+            // 4. 创建文件名二维码
+            console.log('创建文件名二维码...');
+            createFileNameQrCode(totalChunks);
+            
+            console.log('=== 开始生成二维码 ===');
+            showSuccess(`文件处理完成! 共 ${totalChunks} 个数据分片 + 1个文件名分片，准备生成二维码...`);
+            
+            // 5. 生成所有二维码
+            await generateQRCodeSequence();
+        }
+
+        /**
+         * 创建文件名二维码数据
+         */
+        function createFileNameQrCode(totalChunks) {
+            // 正确编码文件名
+            const encodedFileName = encodeFileName(originalFileName);
+            const fileNameData = {
+                t: CONFIG.PACKET_TYPES.FILENAME,
+                f: fileFingerprint,
+                n: encodedFileName,
+                s: originalFileSize,
+                ts: Date.now(),
+                tc: totalChunks
+            };
+            
+            // 计算CRC32校验（与数据分片使用相同算法）
+            const crcData = {
+                t: fileNameData.t,
+                f: fileNameData.f,
+                n: fileNameData.n,
+                s: fileNameData.s,
+                ts: fileNameData.ts,
+                tc: fileNameData.tc
+            };
+            const crc32Hash = calculateCRC32(JSON.stringify(crcData));
+            fileNameData.h = crc32Hash;
+            
+            console.log(`文件名数据JSON长度: ${JSON.stringify(fileNameData).length} 字符`);
+            console.log(`原始文件名: ${originalFileName}`);
+            console.log(`编码后文件名: ${encodedFileName}`);
+            console.log(`CRC32校验: ${crc32Hash}`);
+            
+            fileNameQrCode = fileNameData;
+        }
+
+        /**
+         * 生成二维码序列
+         */
+        async function generateQRCodeSequence() {
+            qrcodeContainer.innerHTML = '';
+            currentChunkIndex = 0;
+            
+            if (chunks.length === 0 && !fileNameQrCode) {
+                showError('没有可分片的数据');
+                return;
+            }
+            
+            const totalQRCodes = chunks.length + 1;
+            showInfo(`正在生成 ${totalQRCodes} 个二维码... (请稍候)`);
+            
+            qrCodeDataUrls = [];
+            
+            // 生成数据二维码
+            for (let index = 0; index < chunks.length; index++) {
+                await generateQRCodeForChunk(index, chunks[index], CONFIG.PACKET_TYPES.DATA, totalQRCodes);
+            }
+            
+            // 生成文件名二维码（最后一个）
+            if (fileNameQrCode) {
+                await generateQRCodeForChunk(chunks.length, fileNameQrCode, CONFIG.PACKET_TYPES.FILENAME, totalQRCodes);
+            }
+            
+            updateProgress();
+            
+            showSuccess(`二维码生成完成! 共 ${totalQRCodes} 个二维码，请按顺序扫描`);
+            startBtn.disabled = false;
+            startBtn.textContent = '🚀 开始生成二维码序列';
+            
+            console.log('=== 二维码生成完成 ===');
+            console.log(`共生成 ${totalQRCodes} 个二维码`);
+            console.log(`文件指纹: ${fileFingerprint}`);
+            console.log(`原始文件名: ${originalFileName}`);
+        }
+
+        /**
+         * 为分片生成二维码
+         */
+        async function generateQRCodeForChunk(index, chunk, type, total) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    try {
+                        const jsonStr = JSON.stringify(chunk);
+                        console.log(`生成二维码 ${index+1}/${total} (${type}): ${jsonStr.length} 字符`);
+                        
+                        // 创建分片容器
+                        const chunkDiv = document.createElement('div');
+                        chunkDiv.className = 'qrcode-item';
+                        chunkDiv.id = `chunk-${index}`;
+                        chunkDiv.style.maxWidth = `${CONFIG.QR_DISPLAY_SIZE + 40}px`;
+                        
+                        if (type === CONFIG.PACKET_TYPES.FILENAME) {
+                            chunkDiv.classList.add('file-name-qr');
+                        }
+                        
+                        // 创建占位符
+                        const placeholder = document.createElement('div');
+                        placeholder.style.cssText = `
+                            width: ${CONFIG.QR_DISPLAY_SIZE}px;
+                            height: ${CONFIG.QR_DISPLAY_SIZE}px;
+                            background: #f0f0f0;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: #666;
+                            font-size: 14px;
+                            margin: 0 auto 10px;
+                            border-radius: 5px;
+                        `;
+                        
+                        let placeholderText = `生成中 ${index+1}/${total}<br>`;
+                        if (type === CONFIG.PACKET_TYPES.FILENAME) {
+                            placeholderText += '文件名';
+                        } else {
+                            placeholderText += '数据';
+                        }
+                        placeholder.innerHTML = placeholderText;
+                        chunkDiv.appendChild(placeholder);
+                        
+                        // 分片信息
+                        const infoDiv = document.createElement('div');
+                        let infoHTML = '';
+                        
+                        if (type === CONFIG.PACKET_TYPES.DATA) {
+                            infoHTML = `
+                                <strong>数据分片 ${chunk.i + 1}/${chunk.t}</strong><br>
+                                <small>指纹: ${chunk.f}</small><br>
+                                <small>校验: ${chunk.h}</small><br>
+                                <small>${jsonStr.length} 字节</small>
+                            `;
+                        } else {
+                            // 文件名二维码
+                            const encodedName = chunk.n || '';
+                            const displayName = encodedName.length > 30 ? 
+                                encodedName.substring(0, 30) + '...' : 
+                                encodedName;
+                            infoHTML = `
+                                <strong style="color:#ff9800;">📄 文件名分片</strong><br>
+                                <small>指纹: ${chunk.f}</small><br>
+                                <small>编码名: ${displayName}</small><br>
+                                <small>大小: ${formatFileSize(chunk.s)}</small><br>
+                                <small>${jsonStr.length} 字节</small>
+                            `;
+                        }
+                        
+                        infoDiv.innerHTML = infoHTML;
+                        chunkDiv.appendChild(infoDiv);
+                        
+                        // 添加到容器
+                        qrcodeContainer.appendChild(chunkDiv);
+                        
+                        // 生成二维码图片
+                        generateQRCodeImage(chunkDiv, placeholder, index, chunk, type);
+                        
+                        resolve();
+                    } catch (error) {
+                        console.error(`生成二维码 ${index+1} 时出错:`, error);
+                        resolve();
+                    }
+                }, index * 50);
+            });
+        }
+
+        /**
+         * 生成二维码图片
+         */
+        function generateQRCodeImage(container, placeholder, index, chunk, type) {
+            try {
+                const jsonStr = JSON.stringify(chunk);
+                
+                // 检查QRCode库是否可用
+                if (typeof QRCode === 'undefined') {
+                    throw new Error('QRCode库未加载');
+                }
+                
+                // 创建临时隐藏的div用于生成二维码
+                const tempDiv = document.createElement('div');
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+                
+                // 生成二维码
+                new QRCode(tempDiv, {
+                    text: jsonStr,
+                    width: CONFIG.QR_GENERATE_SIZE,
+                    height: CONFIG.QR_GENERATE_SIZE,
+                    colorDark: type === CONFIG.PACKET_TYPES.FILENAME ? '#ff9800' : '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+                
+                // 延迟确保二维码渲染完成
+                setTimeout(() => {
+                    const canvas = tempDiv.querySelector('canvas');
+                    if (canvas) {
+                        try {
+                            // 转换为数据URL
+                            const dataUrl = canvas.toDataURL('image/png');
+                            qrCodeDataUrls[index] = dataUrl;
+                            
+                            // 替换占位符为二维码图片
+                            const img = document.createElement('img');
+                            img.src = dataUrl;
+                            img.style.width = CONFIG.QR_DISPLAY_SIZE + 'px';
+                            img.style.height = CONFIG.QR_DISPLAY_SIZE + 'px';
+                            img.style.margin = '0 auto 10px';
+                            img.style.display = 'block';
+                            img.alt = `二维码 ${index + 1}`;
+                            
+                            container.replaceChild(img, placeholder);
+                            
+                            // 添加调试信息
+                            const debugDiv = document.createElement('div');
+                            debugDiv.className = 'debug-info';
+                            let debugText = `类型:${type} 长度:${jsonStr.length}B`;
+                            if (type === CONFIG.PACKET_TYPES.FILENAME) {
+                                debugText += ` 文件:${chunk.n ? chunk.n.length : 0}字符`;
+                            } else {
+                                debugText += ` 数据:${chunk.d ? chunk.d.length : 0}B`;
+                            }
+                            debugDiv.innerHTML = debugText;
+                            container.appendChild(debugDiv);
+                            
+                            console.log(`✅ 二维码 ${index+1} 生成成功 (${type})`);
+                            
+                        } catch (imgError) {
+                            console.error(`❌ 图片转换失败 ${index+1}:`, imgError);
+                            placeholder.innerHTML = `❌ 生成失败<br><small>${imgError.message}</small>`;
+                            placeholder.style.background = '#f8d7da';
+                            placeholder.style.color = '#721c24';
+                        }
+                    } else {
+                        console.error(`❌ Canvas未找到 ${index+1}`);
+                        placeholder.innerHTML = '❌ Canvas生成失败';
+                        placeholder.style.background = '#f8d7da';
+                        placeholder.style.color = '#721c24';
+                    }
+                    
+                    // 清理临时元素
+                    document.body.removeChild(tempDiv);
+                }, 10);
+                
+            } catch (qrError) {
+                console.error(`❌ 生成二维码 ${index+1} 时出错:`, qrError);
+                placeholder.innerHTML = `❌ 生成错误<br><small>${qrError.message}</small>`;
+                placeholder.style.background = '#f8d7da';
+                placeholder.style.color = '#721c24';
+            }
+        }
+
+        /**
+         * 更新扫描进度显示
+         */
+        function updateProgress() {
+            const totalQRCodes = chunks.length + (fileNameQrCode ? 1 : 0);
+            progressInfo.innerHTML = `📊 总共: <span style="color:#3498db">${totalQRCodes}</span> 个二维码 (${chunks.length}个数据 + 1个文件名)`;
+            
+            document.querySelectorAll('.qrcode-item').forEach((item, index) => {
+                if (index === currentChunkIndex) {
+                    item.classList.add('current-qr');
+                } else {
+                    item.classList.remove('current-qr');
+                }
+            });
+        }
+
+        // 重置
+        resetBtn.addEventListener('click', function() {
+            fileInput.value = '';
+            file = null;
+            fileFingerprint = '';
+            originalFileName = '';
+            originalFileSize = 0;
+            chunks = [];
+            qrCodeDataUrls = [];
+            fileNameQrCode = null;
+            currentChunkIndex = 0;
+            fileInfo.style.display = 'none';
+            fingerprintInfo.style.display = 'none';
+            qrcodeContainer.innerHTML = '<p style="color: #7f8c8d; padding: 50px 0;">二维码将在此处显示...</p>';
+            progressInfo.innerHTML = '';
+            showInfo('请选择一个文件');
+            startBtn.disabled = false;
+            startBtn.textContent = '🚀 开始生成二维码序列';
+            chunkSizeSlider.value = 900;
+            chunkSizeValue.textContent = '900 字节';
+            CONFIG.CHUNK_SIZE = 900;
+            qrSizeSlider.value = 500;
+            qrSizeValue.textContent = '500 像素';
+            CONFIG.QR_DISPLAY_SIZE = 500;
+            estimatedChunks.textContent = '--';
+        });
+
+        // ==================== 页面初始化 ====================
+        window.addEventListener('load', function() {
+            console.log('页面加载完成，二维码文件发送器已初始化');
+            
+            // 检查必要依赖
+            if (typeof QRCode === 'undefined') {
+                showError('QRCode库未加载，请检查js/qrcode.min.js文件');
+            }
+            
+            if (typeof pako === 'undefined') {
+                showError('压缩库未加载，请检查js/pako.min.js文件');
+            }
+            
+            if (!window.File || !window.FileReader) {
+                showError('您的浏览器不支持文件操作功能');
+            }
+            
+            showInfo('请选择一个文件');
+        });
+    </script>
+</body>
+</html>
