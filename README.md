@@ -189,7 +189,6 @@ QR_GENERATE_SIZE: 500  // 生成尺寸
 
 ## 📞 支持与反馈
 
-- 📧 邮箱：wallech@foxmail.com
 - 🐛 [提交Issue](https://github.com/wallechfox/QRBridge/issues)
 - 💬 讨论区：[GitHub Discussions](https://github.com/wallechfox/QRBridge/discussions)
 
