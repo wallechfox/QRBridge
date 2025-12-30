@@ -7,6 +7,10 @@
 ![浏览器支持](https://img.shields.io/badge/浏览器-Chrome%2C%20Firefox%2C%20Safari-blue)
 ![许可证](https://img.shields.io/badge/许可证-MIT-lightgrey)
 
+
+### 在线体验
+访问 GitHub Pages：[在线演示](https://wallechfox.github.io/QRBridge/send/send.html)
+
 ## 📁 项目结构
 
 ```
