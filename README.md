@@ -9,7 +9,10 @@
 
 
 ### 在线体验
-访问 GitHub Pages：[在线演示](https://wallechfox.github.io/QRBridge/send/send.html)
+
+[发送端--在线演示](https://wallechfox.github.io/QRBridge/send/send.html)
+
+[接收端--在线演示](https://wallechfox.github.io/QRBridge/receiver/receiver.html)
 
 ## 📁 项目结构
 
